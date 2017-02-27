@@ -1,0 +1,17 @@
+{
+  "account":"TWITTER NAME",
+  "consumer_key":"",
+  "consumer_secret":"",
+  "access_token":"",
+  "access_token_secret":"",
+  "classifier":"rsc/classifier.pickle",
+  "follow_percent":3,
+  "delay_min":1800,
+  "delay_max":45000,
+  "max_tweets":10,
+  "max_follow":2,
+  "generate_prob":5,
+  "discord_webhook":"https://discordapp.com/api/webhooks/WEBHOOK",
+  "discord_username":"USERNAME",
+  "discord_avatar":"AVATAR URL"
+}
