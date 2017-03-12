@@ -86,7 +86,7 @@ def get_web_content(command):
     try:
         url = re.search('(?P<url>https?://[^\s]+)', command).group('url')
         r = requests.get(url)
-        html = bs4.BeautifulSoup(r.text, 'lxml')
+        html = bs4.BeautifulSoup(r.text)
         return (url, html.get_text())
     except:
         return ('', '')
@@ -97,7 +97,7 @@ def replacewebsite(text):
     try:
         url = re.search('(?P<url>https?://[^\s]+)', text).group('url')
         r = requests.get(url)
-        html = bs4.BeautifulSoup(r.text, 'lxml')
+        html = bs4.BeautifulSoup(r.text)
         replacewith = html.title.text
         text = re.sub(r'https?://[^\s]+', replacewith, text)
     except:
@@ -229,6 +229,20 @@ class Bot():
                 self.send_webhook('New follower: ' + follower.screen_name)
             self.eval_user(follower.screen_name, dontfollow=dontfollow)
 
+    def read_lobster(self):
+        r = requests.get('https://lobste.rs/')
+        html = bs4.BeautifulSoup(r.text)
+        links = html.find_all('span', class_='link')
+        cpt = 0
+        for link in links:
+            aelem = link.find('a')
+            if 'http' == aelem['href'][0:4]:
+                print('Read: ' + aelem['href'])
+                cpt += 1
+                self.generate_reaction(aelem['href'])
+                if cpt > 4:
+                    break
+
     def generate_reaction(self, tweet):
         """Generate a reaction tweet. This function get a link in a tweet,
         read the page and get if something is twittable"""
@@ -236,6 +250,7 @@ class Bot():
             print('GENERATING TWEET')
             text = get_web_content(tweet)
             domain = urlparse(text[0]).netloc
+            print("DOMAIN:" + domain)
             possibles_tweets = []
             for line in text[1].split('\n'):
                 line = line.lstrip()
@@ -271,6 +286,9 @@ class Bot():
 
     def sleep(self):
         pause = random.randint(self.delay_min, self.delay_max)
+        # simulate holiday
+        if random.randint(1,120) is 1:
+            pause += random.randint(1,5) * 3600 * 24
         date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
         print(date + ': sleep ' + str(pause) + ' s')
         time.sleep(pause)
@@ -294,7 +312,7 @@ class Bot():
             if 'pos' in prob_dist.max():
                 print('Add: ' + cleaned)
                 userobj = tweet.user
-                if random.randint(1, self.generate_prob) == 1:
+                if random.randint(1, 3) is 1:
                     self.generate_reaction(tweet.text)
 
                 if hasattr(tweet, 'retweeted_status'):
@@ -369,6 +387,7 @@ if __name__ == '__main__':
 - mention: get mentions
 - go/run: run the bot in automated mode.
 - train: train a classifier
+- lobster: read lobster
 """)
             elif command_first == 'quit' or command_first == 'exit':
                 print('Bye')
@@ -389,6 +408,14 @@ if __name__ == '__main__':
                 fenrir.generate_reaction(command)
             elif command_first == 'classify':
                 fenrir.classify()
+            elif command_first == 'tweet':
+                totweet = command[len('tweet '):]
+                if fenrir.cl.prob_classify(totweet) == 'pos':
+                    print('Send tweet:' + totweet)
+                    fenrir.send_webhook('Send tweet:' + totweet)
+                    fenrir.api.update_status(totweet)
+                else:
+                    print('don\'t send this...')
             elif command_first == 'force':
                 if ' follow ' in command or ' unfollow ' in command:
                     try:
@@ -430,12 +457,15 @@ if __name__ == '__main__':
                     fenrir.load_classifier()
                     fenrir.check_mentions()
                     fenrir.eval_followers()
+                    fenrir.read_lobster()
                     fenrir.classify()
+            elif command_first == 'lobster':
+                fenrir.read_lobster()
             elif command_first == 'train':
                 train = []
                 testneg = []
                 testpos = []
-                parse_file('neg', testneg, train, 600)
+                parse_file('neg', testneg, train, 1200)
                 parse_file('pos', testpos, train, 600)
                 random.shuffle(train)
                 print('train size: %i' % len(train))
@@ -444,12 +474,13 @@ if __name__ == '__main__':
 
                 cl = None
                 size = 0
+
                 while size < len(train):
                     begin = size
                     end = size + 500
                     if end > len(train):
                         end = len(train)
-                    print(str(begin) + ':' + str(end) + ':' + str(len(train)))
+                    print(str(begin) + ":" + str(end) + ":" + str(len(train)))
                     size += 500
                     if os.path.isfile('train/classifier.pickle'):
                         cl = load_classifier()
@@ -459,13 +490,24 @@ if __name__ == '__main__':
                         save_classifier(cl)
 
                 # Compute accuracy
+                # Want > 0.95
                 accuracy = cl.accuracy(testneg)
-                print('Accuracy on negative: %i' % accuracy)
+                print('Accuracy on negative: %1.8f' % accuracy)
+                # Want > 0.1
                 accuracy = cl.accuracy(testpos)
-                print('Accuracy on positive: %i' % accuracy)
+                print('Accuracy on positive: %1.8f' % accuracy)
 
                 # Show 10 most informative features
                 print('Best features:')
                 cl.show_informative_features(10)
+
+                #os.rename('train/classifier.pickle', 'train/classifier.pickle.2')
+                ####### c/C
+                #for totest in testneg:
+                #    if cl.prob_classify(totest[0]) != 'neg':
+                #        addto('rsc/badpos', totest[0])
+                #for totest in testpos:
+                #    if cl.prob_classify(totest[0]) != 'pos':
+                #        addto('rsc/badneg', totest[0])
     except KeyboardInterrupt:
         print('Bye...')
