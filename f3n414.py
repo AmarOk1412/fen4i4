@@ -240,7 +240,20 @@ class Bot():
                 print('Read: ' + aelem['href'])
                 cpt += 1
                 self.generate_reaction(aelem['href'])
-                if cpt > 4:
+                r = requests.get(aelem['href'])
+                html = bs4.BeautifulSoup(r.text)
+                try:
+                    title = html.title.text
+                    print(title)
+                    prob_dist = self.cl.prob_classify(clean_tweet(title))
+                    if 'pos' in prob_dist.max():
+                        texttweet = title + " - " + aelem['href']
+                        status = self.api.update_status(texttweet)
+                        link = 'https://twitter.com/statuses/' + str(status.id) + ' - ' + texttweet
+                        self.send_webhook('Tweet: ' + link)
+                except:
+                    print('except')
+                if cpt > 5:
                     break
 
     def generate_reaction(self, tweet):
