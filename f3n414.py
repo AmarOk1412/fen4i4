@@ -333,7 +333,7 @@ class Bot():
                 if cpt_follow < self.max_follow and userobj != self.me:
                     if self.eval_user(userobj.screen_name):
                         cpt_follow += 1
-                if tweet.id not in to_rt:
+                if tweet.id not in to_rt and userobj != self.me:
                     to_rt.append(tweet.id)
                     addto('rsc/pos', cleaned)
                 else:
