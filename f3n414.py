@@ -212,7 +212,7 @@ class Bot():
         # If we've got more than follow_percent % interesting tweets
         if count >= self.follow_percent:
             print('Follow: ' + user)
-            if not dontfollow:
+            if not dontfollow and user != self.me.screen_name:
                 self.send_webhook('Follow: ' + user)
                 self.api.create_friendship(userobj.id)
             addto('rsc/follow', user)
@@ -330,7 +330,7 @@ class Bot():
 
                 if hasattr(tweet, 'retweeted_status'):
                     userobj = tweet.retweeted_status.author
-                if cpt_follow < self.max_follow:
+                if cpt_follow < self.max_follow and userobj != self.me:
                     if self.eval_user(userobj.screen_name):
                         cpt_follow += 1
                 if tweet.id not in to_rt:
